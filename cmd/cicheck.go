@@ -45,7 +45,8 @@ var cicheckCmd = &cobra.Command{
 			helper.PrintError(err)
 			os.Exit(1)
 		}
-		helper.ProcessCiCheck(fileID, riskThresholdInt)
+		sarif, _ := cmd.Flags().GetBool("sarif")
+		helper.ProcessCiCheck(fileID, riskThresholdInt, sarif)
 	},
 }
 
@@ -53,4 +54,6 @@ func init() {
 	RootCmd.AddCommand(cicheckCmd)
 	cicheckCmd.Flags().StringP(
 		"risk-threshold", "r", "low", "Risk threshold to fail the command. Available options: low, medium, high")
+	cicheckCmd.Flags().BoolP(
+		"sarif", "s", false, "Enable SARIF format")
 }

@@ -15,7 +15,7 @@ import (
 )
 
 // ProcessCiCheck takes the list of analyses and print it to CLI.
-func ProcessCiCheck(fileID, riskThreshold int) {
+func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 	ctx := context.Background()
 	client := getClient()
 	var staticScanProgess int
@@ -95,6 +95,23 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 		)
 	}
 	vulLen := len(vulnerableAnalyses)
+	if sarifBool {
+		fmt.Println("Creating SARIF formatted result:")
+		vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
+
+		for _, analysis := range finalAnalyses {
+			{
+				vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
+			}
+		}
+		var filePathForSarifReport = "report.sarif.json"
+		err := ConvertToSARIF(vulnerableAnalysesForSarif, filePathForSarifReport)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		fmt.Println("SARIF report created successfully at:", filePathForSarifReport)
+	}
 	msg := fmt.Sprintf("\nCheck file ID %d on appknox dashboard for more details.\n", fileID)
 	if vulLen > 0 {
 		errmsg := fmt.Sprintf("Found %d vulnerabilities with risk >= %s\n", vulLen, enums.RiskType(riskThreshold))
