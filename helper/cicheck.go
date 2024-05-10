@@ -25,7 +25,7 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 		mpb.WithRefreshRate(180*time.Millisecond),
 		mpb.WithOutput(os.Stderr),
 	)
-	name := "Static Scan Progress: "
+	name := "Static Scan Progress on Appknox-go local: "
 	bar := p.AddBar(100, mpb.BarStyle("[=>-|"),
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DidentRight}),
