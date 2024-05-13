@@ -2,6 +2,7 @@ package helper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,8 +15,19 @@ import (
 	"github.com/vbauerster/mpb/v4/decor"
 )
 
+// SARIFResult represents sarif formatted data
+type SARIFResult struct {
+	Runs []struct {
+		Results []struct {
+			RuleID  string `json:"ruleId"`
+			Risk    string `json:"risk"`
+			Message string `json:"message"`
+		} `json:"results"`
+	} `json:"runs"`
+}
+
 // ProcessCiCheck takes the list of analyses and print it to CLI.
-func ProcessCiCheck(fileID, riskThreshold int) {
+func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 	ctx := context.Background()
 	client := getClient()
 	var staticScanProgess int
@@ -25,7 +37,7 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 		mpb.WithRefreshRate(180*time.Millisecond),
 		mpb.WithOutput(os.Stderr),
 	)
-	name := "Static Scan Progress on Appknox-go local: "
+	name := "Static Scan Progress: "
 	bar := p.AddBar(100, mpb.BarStyle("[=>-|"),
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DidentRight}),
@@ -72,6 +84,7 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 		"VULNERABILITY-NAME",
 	)
 	vulnerableAnalyses := make([]appknox.Analysis, 0)
+	var sarif SARIFResult
 	for _, analysis := range finalAnalyses {
 		if int(analysis.ComputedRisk) >= riskThreshold {
 			vulnerableAnalyses = append(vulnerableAnalyses, *analysis)
@@ -93,8 +106,41 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 			analysis.VulnerabilityID,
 			vulnerability.Name,
 		)
+
+		sarif.Runs = append(sarif.Runs, struct {
+			Results []struct {
+				RuleID  string "json:\"ruleId\""
+				Risk    string "json:\"risk\""
+				Message string "json:\"message\""
+			} "json:\"results\""
+		}{
+			Results: []struct {
+				RuleID  string `json:"ruleId"`
+				Risk    string "json:\"risk\""
+				Message string `json:"message"`
+			}{
+				{
+					RuleID:  fmt.Sprintf("%d", analysis.ID),
+					Risk:    fmt.Sprintf("%d", analysis.ComputedRisk),
+					Message: fmt.Sprintf("Vulnerability Name: %s, CVSS Vector: %s, CVSS Base: %s, Vulnerability ID: %s", vulnerability.Name, analysis.CvssVector, analysis.CvssBase, analysis.VulnerabilityID),
+				},
+			},
+		})
 	}
+
+	// Print SARIF formatted result if sarif is true
+	if sarifBool{
+		jsonSARIF, err := json.MarshalIndent(sarif, "", "  ")
+		if err != nil {
+			PrintError(err)
+			os.Exit(1)
+		}
+		fmt.Println("SARIF FORMATTED RESULT:")
+		fmt.Println(string(jsonSARIF))
+	}
+
 	vulLen := len(vulnerableAnalyses)
+
 	msg := fmt.Sprintf("\nCheck file ID %d on appknox dashboard for more details.\n", fileID)
 	if vulLen > 0 {
 		errmsg := fmt.Sprintf("Found %d vulnerabilities with risk >= %s\n", vulLen, enums.RiskType(riskThreshold))

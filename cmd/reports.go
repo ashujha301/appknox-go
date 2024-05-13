@@ -99,6 +99,8 @@ var reportsDownloadExcelCmd = &cobra.Command{
 	},
 }
 
+//
+
 func init() {
 	reportsDownloadCmd.AddCommand(reportsDownloadCsvCmd)
 	reportsDownloadCmd.AddCommand(reportsDownloadExcelCmd)
