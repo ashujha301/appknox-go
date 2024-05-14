@@ -61,5 +61,5 @@ func init() {
 
 		//Add the ghas flag with a default value of false
 		cicheckCmd.Flags().BoolP(
-			"sarif","s",false, "Enable SARIF format")
+			"sarif", "s", false, "Enable SARIF format")
 }

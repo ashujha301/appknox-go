@@ -2,7 +2,6 @@ package helper
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,17 +14,6 @@ import (
 	"github.com/vbauerster/mpb/v4/decor"
 )
 
-// SARIFResult represents sarif formatted data
-type SARIFResult struct {
-	Runs []struct {
-		Results []struct {
-			RuleID  string `json:"ruleId"`
-			Risk    string `json:"risk"`
-			Message string `json:"message"`
-		} `json:"results"`
-	} `json:"runs"`
-}
-
 // ProcessCiCheck takes the list of analyses and print it to CLI.
 func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 	ctx := context.Background()
@@ -37,7 +25,7 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 		mpb.WithRefreshRate(180*time.Millisecond),
 		mpb.WithOutput(os.Stderr),
 	)
-	name := "Static Scan Progress: "
+	name := "Static Scan Progress====>   : "
 	bar := p.AddBar(100, mpb.BarStyle("[=>-|"),
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DidentRight}),
@@ -74,6 +62,7 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 		PrintError(err)
 		os.Exit(1)
 	}
+
 	t := tabby.New()
 	t.AddHeader(
 		"ANALYSIS-ID",
@@ -83,13 +72,34 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 		"VULNERABILITY-ID",
 		"VULNERABILITY-NAME",
 	)
+	vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
+
+	for _, analysis := range finalAnalyses {
+		{
+			vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
+		}
+	}
+	//Generate SARIF report if sarifBool flag is added
+	if sarifBool {
+		fmt.Println("SARIF FORMATTED RESULT CREATING:")
+		var filePathForSarifReport = "report-sarif.json"
+		err := ConvertToSARIF(vulnerableAnalysesForSarif, filePathForSarifReport)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println("SARIF report created successfully at:", filePathForSarifReport)
+	}
+
 	vulnerableAnalyses := make([]appknox.Analysis, 0)
-	var sarif SARIFResult
+
 	for _, analysis := range finalAnalyses {
 		if int(analysis.ComputedRisk) >= riskThreshold {
 			vulnerableAnalyses = append(vulnerableAnalyses, *analysis)
 		}
 	}
+
 	for _, analysis := range vulnerableAnalyses {
 		vulnerability, _, err := client.Vulnerabilities.GetByID(
 			ctx, analysis.VulnerabilityID,
@@ -106,37 +116,6 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 			analysis.VulnerabilityID,
 			vulnerability.Name,
 		)
-
-		sarif.Runs = append(sarif.Runs, struct {
-			Results []struct {
-				RuleID  string "json:\"ruleId\""
-				Risk    string "json:\"risk\""
-				Message string "json:\"message\""
-			} "json:\"results\""
-		}{
-			Results: []struct {
-				RuleID  string `json:"ruleId"`
-				Risk    string "json:\"risk\""
-				Message string `json:"message"`
-			}{
-				{
-					RuleID:  fmt.Sprintf("%d", analysis.ID),
-					Risk:    fmt.Sprintf("%d", analysis.ComputedRisk),
-					Message: fmt.Sprintf("Vulnerability Name: %s, CVSS Vector: %s, CVSS Base: %s, Vulnerability ID: %s", vulnerability.Name, analysis.CvssVector, analysis.CvssBase, analysis.VulnerabilityID),
-				},
-			},
-		})
-	}
-
-	// Print SARIF formatted result if sarif is true
-	if sarifBool{
-		jsonSARIF, err := json.MarshalIndent(sarif, "", "  ")
-		if err != nil {
-			PrintError(err)
-			os.Exit(1)
-		}
-		fmt.Println("SARIF FORMATTED RESULT:")
-		fmt.Println(string(jsonSARIF))
 	}
 
 	vulLen := len(vulnerableAnalyses)
