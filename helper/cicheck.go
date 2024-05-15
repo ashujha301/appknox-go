@@ -25,7 +25,7 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 		mpb.WithRefreshRate(180*time.Millisecond),
 		mpb.WithOutput(os.Stderr),
 	)
-	name := "Static Scan Progress====>   : "
+	name := "Static Scan Progress ====> : "
 	bar := p.AddBar(100, mpb.BarStyle("[=>-|"),
 		mpb.PrependDecorators(
 			decor.Name(name, decor.WC{W: len(name) + 1, C: decor.DidentRight}),
@@ -72,17 +72,19 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 		"VULNERABILITY-ID",
 		"VULNERABILITY-NAME",
 	)
-	vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
-
-	for _, analysis := range finalAnalyses {
-		{
-			vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
-		}
-	}
+	
 	//Generate SARIF report if sarifBool flag is added
 	if sarifBool {
 		fmt.Println("SARIF FORMATTED RESULT CREATING:")
-		var filePathForSarifReport = "report-sarif.json"
+		vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
+
+		for _, analysis := range finalAnalyses {
+			{
+				vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
+			}
+		}
+		
+		var filePathForSarifReport = "report.sarif.json"
 		err := ConvertToSARIF(vulnerableAnalysesForSarif, filePathForSarifReport)
 		if err != nil {
 			fmt.Println("Error:", err)

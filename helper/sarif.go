@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/appknox/appknox-go/appknox"
-	"github.com/appknox/appknox-go/appknox/enums"
 )
 
 type SARIF struct {
@@ -29,23 +28,28 @@ type Tool struct {
 
 type ToolComponent struct {
 	Name    string `json:"name"`
-	Version string `json:"version"`
 }
 
 type VulnerabilityInfo struct {
 	VulnerabilityName        string    `json:"vulnerabilityName,omitempty"`
 	VulnerabilityDescription string    `json:"vulnerabilityDescription,omitempty"`
-	Message                  string    `json:"message,omitempty"`
 	UpdatedOn                time.Time `json:"updatedOn,omitempty"`
+}
+
+type RuleIDInfo struct {
+	OverRiddenRisk 	string		`json:"ruleID,omitempty"`
+	ComputedRisk	string		`json:"overridden_risk,omitempty"`
+	Status 			string		`json:"status,omitempty"`
+	Message         string    	`json:"message,omitempty"`
+	VulnerabilityID int                     `json:"vulnerabilityID,omitempty"`
+	Vulnerability   VulnerabilityInfo       `json:"vulnerability,omitempty"`
+
 }
 
 type Result struct {
 	RuleID          int                     `json:"ruleID,omitempty"`
-	OverRiddenRisk  enums.RiskType          `json:"overridden_risk,omitempty"`
-	ComputedRisk    enums.RiskType          `json:"computed_risk,omitempty"`
-	Status          enums.AnalysisStateType `json:"status,omitempty"`
-	VulnerabilityID int                     `json:"vulnerabilityID,omitempty"`
-	Vulnerability   VulnerabilityInfo       `json:"vulnerability,omitempty"`
+	RuleIDProperties RuleIDInfo				`json:"RuleIDProperties,omitempty"`
+	
 }
 
 // ConvertToSARIF converts analysis data to SARIF format
@@ -60,7 +64,6 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 		Tool: Tool{
 			Driver: ToolComponent{
 				Name:    "Appknox",
-				Version: "1.0.0",
 			},
 		},
 	}
@@ -76,17 +79,19 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 
 		result := Result{
 			RuleID:         analysis.ID,
-			OverRiddenRisk: analysis.OverRiddenRisk,
-			ComputedRisk:   analysis.ComputedRisk,
-			Status:         analysis.Status,
-
-			VulnerabilityID: analysis.VulnerabilityID,
-			Vulnerability: VulnerabilityInfo{
-				VulnerabilityName:        vulnerability.Name,
-				VulnerabilityDescription: vulnerability.Description,
-				Message:                  fmt.Sprintf("CVSS Vector: %s, CVSS Base: %f, CVSS Version: %d, OWASP: %s", analysis.CvssVector, analysis.CvssBase, analysis.CvssVersion, analysis.Owasp),
-				UpdatedOn:                *analysis.UpdatedOn,
+			RuleIDProperties: RuleIDInfo{
+				OverRiddenRisk: analysis.OverRiddenRisk.String(),
+				ComputedRisk:   analysis.ComputedRisk.String(),
+				Status:         analysis.Status.String(),
+				Message:        fmt.Sprintf("CVSS Vector: %s, CVSS Base: %f, CVSS Version: %d, OWASP: %s", analysis.CvssVector, analysis.CvssBase, analysis.CvssVersion, analysis.Owasp),
+				VulnerabilityID: analysis.VulnerabilityID,
+				Vulnerability: VulnerabilityInfo{
+					VulnerabilityName:        vulnerability.Name,
+					VulnerabilityDescription: vulnerability.Description,
+					UpdatedOn:                *analysis.UpdatedOn,
 			},
+			},
+			
 		}
 
 		sarif.Runs = append(sarif.Runs, Run{
