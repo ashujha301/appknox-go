@@ -26,10 +26,18 @@ var analysesCmd = &cobra.Command{
 			helper.PrintError("valid file id is required")
 			os.Exit(1)
 		}
-		helper.ProcessAnalyses(fileID)
+
+		//Get the value of the ghas flag
+		sarif, _ := cmd.Flags().GetBool("sarif")
+
+		helper.ProcessAnalyses(fileID,sarif)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(analysesCmd)
+
+	//Add the ghas flag with a default value of false
+	analysesCmd.Flags().BoolP(
+		"sarif", "s", false, "Enable SARIF format")
 }

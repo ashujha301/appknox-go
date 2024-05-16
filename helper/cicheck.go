@@ -73,26 +73,6 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 		"VULNERABILITY-NAME",
 	)
 	
-	//Generate SARIF report if sarifBool flag is added
-	if sarifBool {
-		fmt.Println("SARIF FORMATTED RESULT CREATING:")
-		vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
-
-		for _, analysis := range finalAnalyses {
-			{
-				vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
-			}
-		}
-		
-		var filePathForSarifReport = "report.sarif.json"
-		err := ConvertToSARIF(vulnerableAnalysesForSarif, filePathForSarifReport)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		fmt.Println("SARIF report created successfully at:", filePathForSarifReport)
-	}
 
 	vulnerableAnalyses := make([]appknox.Analysis, 0)
 
@@ -121,6 +101,27 @@ func ProcessCiCheck(fileID, riskThreshold int, sarifBool bool) {
 	}
 
 	vulLen := len(vulnerableAnalyses)
+
+	//Generate SARIF report if sarifBool flag is added
+	if sarifBool {
+		fmt.Println("SARIF FORMATTED RESULT CREATING:")
+		vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
+
+		for _, analysis := range finalAnalyses {
+			{
+				vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
+			}
+		}
+		
+		var filePathForSarifReport = "report.sarif.json"
+		err := ConvertToSARIF(vulnerableAnalysesForSarif, filePathForSarifReport)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println("SARIF report created successfully at:", filePathForSarifReport)
+	}
 
 	msg := fmt.Sprintf("\nCheck file ID %d on appknox dashboard for more details.\n", fileID)
 	if vulLen > 0 {

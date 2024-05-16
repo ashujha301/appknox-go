@@ -93,7 +93,7 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 			Vulnerability: VulnerabilityInfo{
 				VulnerabilityID:          vulnerability.ID,
 				VulnerabilityDescription: vulnerability.Description,
-				UpdatedOn:                *analysis.UpdatedOn, // Update with actual time
+				UpdatedOn:                *analysis.UpdatedOn, 
 			},
 			Location: []Location{
 				{
