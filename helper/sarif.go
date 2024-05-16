@@ -3,7 +3,6 @@ package helper
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -27,29 +26,37 @@ type Tool struct {
 }
 
 type ToolComponent struct {
-	Name    string `json:"name"`
+	Name string `json:"name"`
 }
 
 type VulnerabilityInfo struct {
-	VulnerabilityName        string    `json:"vulnerabilityName,omitempty"`
+	VulnerabilityID          int       `json:"vulnerabilityID,omitempty"`
 	VulnerabilityDescription string    `json:"vulnerabilityDescription,omitempty"`
 	UpdatedOn                time.Time `json:"updatedOn,omitempty"`
 }
 
-type RuleIDInfo struct {
-	OverRiddenRisk 	string		`json:"ruleID,omitempty"`
-	ComputedRisk	string		`json:"overridden_risk,omitempty"`
-	Status 			string		`json:"status,omitempty"`
-	Message         string    	`json:"message,omitempty"`
-	VulnerabilityID int                     `json:"vulnerabilityID,omitempty"`
-	Vulnerability   VulnerabilityInfo       `json:"vulnerability,omitempty"`
+type MessageInfo struct {
+	Text string `json:"text,omitempty"`
+}
 
+type Location struct {
+	PhysicalLocation PhysicalLocation `json:"physicalLocation"`
+}
+
+type PhysicalLocation struct {
+	ArtifactLocation ArtifactLocation `json:"artifactLocation"`
+}
+
+type ArtifactLocation struct {
+	URI string `json:"uri"`
 }
 
 type Result struct {
-	RuleID          int                     `json:"ruleID,omitempty"`
-	RuleIDProperties RuleIDInfo				`json:"RuleIDProperties,omitempty"`
-	
+	RuleID        int               `json:"ruleId,omitempty"`
+	Level         string            `json:"level,omitempty"`
+	Message       MessageInfo       `json:"message,omitempty"`
+	Vulnerability VulnerabilityInfo `json:"Vulnerability,omitempty"`
+	Location      []Location        `json:"location,omitempty"`
 }
 
 // ConvertToSARIF converts analysis data to SARIF format
@@ -59,11 +66,11 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 	client := getClient()
 
 	sarif := SARIF{
-		Schema:  "SARIF",
+		Schema:  "https://raw.githubusercontent.com/schemastore/schemastore/master/src/schemas/json/sarif-2.1.0-rtm.5.json",
 		Version: "2.1.0",
 		Tool: Tool{
 			Driver: ToolComponent{
-				Name:    "Appknox",
+				Name: "Appknox",
 			},
 		},
 	}
@@ -78,20 +85,25 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 		}
 
 		result := Result{
-			RuleID:         analysis.ID,
-			RuleIDProperties: RuleIDInfo{
-				OverRiddenRisk: analysis.OverRiddenRisk.String(),
-				ComputedRisk:   analysis.ComputedRisk.String(),
-				Status:         analysis.Status.String(),
-				Message:        fmt.Sprintf("CVSS Vector: %s, CVSS Base: %f, CVSS Version: %d, OWASP: %s", analysis.CvssVector, analysis.CvssBase, analysis.CvssVersion, analysis.Owasp),
-				VulnerabilityID: analysis.VulnerabilityID,
-				Vulnerability: VulnerabilityInfo{
-					VulnerabilityName:        vulnerability.Name,
-					VulnerabilityDescription: vulnerability.Description,
-					UpdatedOn:                *analysis.UpdatedOn,
+			RuleID: analysis.ID,
+			Level:  analysis.ComputedRisk.String(),
+			Message: MessageInfo{
+				Text: vulnerability.Name,
 			},
+			Vulnerability: VulnerabilityInfo{
+				VulnerabilityID:          vulnerability.ID,
+				VulnerabilityDescription: vulnerability.Description,
+				UpdatedOn:                *analysis.UpdatedOn, // Update with actual time
 			},
-			
+			Location: []Location{
+				{
+					PhysicalLocation: PhysicalLocation{
+						ArtifactLocation: ArtifactLocation{
+							URI: "file path to source location",
+						},
+					},
+				},
+			},
 		}
 
 		sarif.Runs = append(sarif.Runs, Run{
