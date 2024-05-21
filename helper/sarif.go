@@ -3,40 +3,53 @@ package helper
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
-	"time"
 
 	"github.com/appknox/appknox-go/appknox"
+	"github.com/appknox/appknox-go/appknox/enums"
 )
 
 type SARIF struct {
 	Schema  string `json:"$schema"`
 	Version string `json:"version"`
 	Runs    []Run  `json:"runs"`
-	Tool    Tool   `json:"tool"`
 }
 
 type Run struct {
-	Tool    Tool     `json:"tool"`
 	Results []Result `json:"results"`
 }
 
-type Tool struct {
-	Driver ToolComponent `json:"driver"`
+type Rule struct {
+	ID               string         `json:"id"`
+	Name             string         `json:"name"`
+	ShortDescription Description    `json:"shortDescription"`
+	FullDescription  Description    `json:"fullDescription"`
 }
 
-type ToolComponent struct {
-	Name string `json:"name"`
+type Description struct {
+	Text string `json:"text"`
 }
 
-type VulnerabilityInfo struct {
-	VulnerabilityID          int       `json:"vulnerabilityID,omitempty"`
-	VulnerabilityDescription string    `json:"vulnerabilityDescription,omitempty"`
-	UpdatedOn                time.Time `json:"updatedOn,omitempty"`
+type RuleProperties struct {
+	Precision string `json:"precision"`
+	Severity  string `json:"severity"`
 }
 
-type MessageInfo struct {
-	Text string `json:"text,omitempty"`
+type Result struct {
+	RuleID              string            `json:"ruleId"`
+	Level               string            `json:"level"`
+	Message             Message           `json:"message"`
+	Properties       RuleProperties `json:"properties"`
+	Locations           []Location        `json:"locations,omitempty"`
+	Help             Help           `json:"help,omitempty"`
+	PartialFingerprints map[string]string `json:"partialFingerprints,omitempty"`
+}
+
+type Message struct {
+	ID        string   `json:"id,omitempty"`
+	Arguments []string `json:"arguments,omitempty"`
+	Text      string   `json:"text,omitempty"`
 }
 
 type Location struct {
@@ -51,79 +64,93 @@ type ArtifactLocation struct {
 	URI string `json:"uri"`
 }
 
-type Result struct {
-	RuleID        int               `json:"ruleId,omitempty"`
-	Level         string            `json:"level,omitempty"`
-	Message       MessageInfo       `json:"message,omitempty"`
-	Vulnerability VulnerabilityInfo `json:"Vulnerability,omitempty"`
-	Location      []Location        `json:"location,omitempty"`
+type Help struct {
+	Text     string `json:"text,omitempty"`
+	Markdown string `json:"markdown,omitempty"`
 }
 
 // ConvertToSARIF converts analysis data to SARIF format
 func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
-
 	ctx := context.Background()
 	client := getClient()
 
 	sarif := SARIF{
-		Schema:  "https://raw.githubusercontent.com/schemastore/schemastore/master/src/schemas/json/sarif-2.1.0-rtm.5.json",
+		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
 		Version: "2.1.0",
-		Tool: Tool{
-			Driver: ToolComponent{
-				Name: "Appknox",
-			},
+	}
+
+	runs := []Run{
+		{
+			Results: []Result{},
 		},
 	}
 
 	for _, analysis := range analysisData {
-		vulnerability, _, err := client.Vulnerabilities.GetByID(
-			ctx, analysis.VulnerabilityID,
-		)
+		vulnerability, _, err := client.Vulnerabilities.GetByID(ctx, analysis.VulnerabilityID)
 		if err != nil {
 			PrintError(err)
 			os.Exit(1)
 		}
 
+		ruleID := fmt.Sprintf("APX0%d", vulnerability.ID)
+		var level string
+		switch analysis.ComputedRisk {
+		case enums.Risk.Low:
+			level = "note"
+		case enums.Risk.Medium:
+			level = "warning"
+		case enums.Risk.High, enums.Risk.Critical:
+			level = "error"
+		default:
+			level = "none"
+		}
+
 		result := Result{
-			RuleID: analysis.ID,
-			Level:  analysis.ComputedRisk.String(),
-			Message: MessageInfo{
-				Text: vulnerability.Name,
+			RuleID: ruleID,
+			Level:  level,
+			Message: Message{
+				ID:        fmt.Sprintf("%d", analysis.ID),
+				Arguments: []string{vulnerability.Name},
+				Text:      vulnerability.Intro,
 			},
-			Vulnerability: VulnerabilityInfo{
-				VulnerabilityID:          vulnerability.ID,
-				VulnerabilityDescription: vulnerability.Description,
-				UpdatedOn:                *analysis.UpdatedOn, 
+			Properties: RuleProperties{
+				Precision: "medium",
+				Severity:  fmt.Sprintf("%d", analysis.ComputedRisk),
 			},
-			Location: []Location{
+			Locations: []Location{
 				{
 					PhysicalLocation: PhysicalLocation{
 						ArtifactLocation: ArtifactLocation{
-							URI: "file path to source location",
+							URI: "unknown",
 						},
 					},
 				},
 			},
+			Help: Help{
+				Text:     "Recommendations",
+				Markdown: fmt.Sprintf("## Recommendations\n\n### Compliant:\n%s\n\n### Non-Compliant:\n%s", vulnerability.Compliant, vulnerability.NonCompliant),
+			},
+			PartialFingerprints: map[string]string{
+				"vulnerabilityId": fmt.Sprintf("%d", vulnerability.ID),
+			},
 		}
 
-		sarif.Runs = append(sarif.Runs, Run{
-			Tool:    sarif.Tool,
-			Results: []Result{result},
-		})
+		runs[0].Results = append(runs[0].Results, result)
 	}
+
+	sarif.Runs = runs
+
 	sarifJSON, err := json.MarshalIndent(sarif, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	// Write SARIF JSON data to file
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	// Write SARIF JSON data to file
 	_, err = file.Write(sarifJSON)
 	if err != nil {
 		return err
