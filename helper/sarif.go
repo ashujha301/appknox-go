@@ -8,6 +8,7 @@ import (
 
 	"github.com/appknox/appknox-go/appknox"
 	"github.com/appknox/appknox-go/appknox/enums"
+	"github.com/iancoleman/strcase"
 )
 
 type SARIF struct {
@@ -17,14 +18,25 @@ type SARIF struct {
 }
 
 type Run struct {
-	Results []Result `json:"results"`
+	Tool    ToolComponent `json:"tool"`
+	Results []Result      `json:"results"`
+}
+
+type ToolComponent struct {
+	Driver Driver `json:"driver"`
+}
+
+type Driver struct {
+	Name  string `json:"name"`
+	Rules []Rule `json:"rules"`
 }
 
 type Rule struct {
-	ID               string         `json:"id"`
-	Name             string         `json:"name"`
-	ShortDescription Description    `json:"shortDescription"`
-	FullDescription  Description    `json:"fullDescription"`
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	ShortDescription Description `json:"shortDescription"`
+	FullDescription  Description `json:"fullDescription"`
+	Help             Help        `json:"help,omitempty"`
 }
 
 type Description struct {
@@ -40,9 +52,8 @@ type Result struct {
 	RuleID              string            `json:"ruleId"`
 	Level               string            `json:"level"`
 	Message             Message           `json:"message"`
-	Properties       RuleProperties `json:"properties"`
+	Properties          RuleProperties    `json:"properties"`
 	Locations           []Location        `json:"locations,omitempty"`
-	Help             Help           `json:"help,omitempty"`
 	PartialFingerprints map[string]string `json:"partialFingerprints,omitempty"`
 }
 
@@ -79,17 +90,17 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 		Version: "2.1.0",
 	}
 
-	runs := []Run{
-		{
-			Results: []Result{},
-		},
+	driver := Driver{
+		Name:  "Appknox",
+		Rules: []Rule{},
 	}
+
+	results := []Result{}
 
 	for _, analysis := range analysisData {
 		vulnerability, _, err := client.Vulnerabilities.GetByID(ctx, analysis.VulnerabilityID)
 		if err != nil {
-			PrintError(err)
-			os.Exit(1)
+			return err
 		}
 
 		ruleID := fmt.Sprintf("APX0%d", vulnerability.ID)
@@ -105,13 +116,28 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 			level = "none"
 		}
 
+		rule := Rule{
+			ID:   ruleID,
+			Name: strcase.ToCamel(vulnerability.Name),
+			ShortDescription: Description{
+				Text: vulnerability.Intro,
+			},
+			FullDescription: Description{
+				Text: vulnerability.Description,
+			},
+			Help: Help{
+				Text:     "Recommendations",
+				Markdown: fmt.Sprintf("## Recommendations\n\n### Compliant:\n%s\n\n### Non-Compliant:\n%s", vulnerability.Compliant, vulnerability.NonCompliant),
+			},
+		}
+
+		driver.Rules = append(driver.Rules, rule)
+
 		result := Result{
 			RuleID: ruleID,
 			Level:  level,
 			Message: Message{
-				ID:        fmt.Sprintf("%d", analysis.ID),
-				Arguments: []string{vulnerability.Name},
-				Text:      vulnerability.Intro,
+				Text: vulnerability.Intro,
 			},
 			Properties: RuleProperties{
 				Precision: "medium",
@@ -126,19 +152,22 @@ func ConvertToSARIF(analysisData []appknox.Analysis, filePath string) error {
 					},
 				},
 			},
-			Help: Help{
-				Text:     "Recommendations",
-				Markdown: fmt.Sprintf("## Recommendations\n\n### Compliant:\n%s\n\n### Non-Compliant:\n%s", vulnerability.Compliant, vulnerability.NonCompliant),
-			},
 			PartialFingerprints: map[string]string{
 				"vulnerabilityId": fmt.Sprintf("%d", vulnerability.ID),
 			},
 		}
 
-		runs[0].Results = append(runs[0].Results, result)
+		results = append(results, result)
 	}
 
-	sarif.Runs = runs
+	run := Run{
+		Tool: ToolComponent{
+			Driver: driver,
+		},
+		Results: results,
+	}
+
+	sarif.Runs = []Run{run}
 
 	sarifJSON, err := json.MarshalIndent(sarif, "", "  ")
 	if err != nil {
