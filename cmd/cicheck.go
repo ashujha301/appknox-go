@@ -45,10 +45,7 @@ var cicheckCmd = &cobra.Command{
 			helper.PrintError(err)
 			os.Exit(1)
 		}
-
-		//Get the value of the ghas flag
 		sarif, _ := cmd.Flags().GetBool("sarif")
-
 		helper.ProcessCiCheck(fileID, riskThresholdInt, sarif)
 	},
 }
@@ -57,8 +54,6 @@ func init() {
 	RootCmd.AddCommand(cicheckCmd)
 	cicheckCmd.Flags().StringP(
 		"risk-threshold", "r", "low", "Risk threshold to fail the command. Available options: low, medium, high")
-
-	//Add the ghas flag with a default value of false
 	cicheckCmd.Flags().BoolP(
 		"sarif", "s", false, "Enable SARIF format")
 }

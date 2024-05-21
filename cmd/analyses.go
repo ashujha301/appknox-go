@@ -27,10 +27,7 @@ var analysesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		//Get the value of the ghas flag
-		sarif, _ := cmd.Flags().GetBool("sarif")
-
-		helper.ProcessAnalyses(fileID,sarif)
+		helper.ProcessAnalyses(fileID)
 	},
 }
 

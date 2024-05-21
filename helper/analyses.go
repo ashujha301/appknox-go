@@ -3,14 +3,13 @@ package helper
 import (
 	"context"
 	"os"
-	"fmt"
 
 	"github.com/appknox/appknox-go/appknox"
 	"github.com/cheynewallace/tabby"
 )
 
 // ProcessAnalyses takes the list of analyses and print it to CLI.
-func ProcessAnalyses(fileID int, sarifBool bool) {
+func ProcessAnalyses(fileID int) {
 	ctx := context.Background()
 	client := getClient()
 	_, analysisResponse, err := client.Analyses.ListByFile(ctx, fileID, nil)
@@ -83,25 +82,4 @@ func ProcessAnalyses(fileID int, sarifBool bool) {
 		t.AddLine(row...)
 	}
 	t.Print()
-
-	//Generate SARIF report if sarifBool flag is added
-	if sarifBool {
-		fmt.Println("SARIF FORMATTED RESULT CREATING:")
-		vulnerableAnalysesForSarif := make([]appknox.Analysis, 0)
-
-		for _, analysis := range finalAnalyses {
-			{
-				vulnerableAnalysesForSarif = append(vulnerableAnalysesForSarif, *analysis)
-			}
-		}
-		
-		var filePathForSarifReport = "report.sarif.json"
-		err := ConvertToSARIF(vulnerableAnalysesForSarif, filePathForSarifReport)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		fmt.Println("SARIF report created successfully at:", filePathForSarifReport)
-	}
 }
