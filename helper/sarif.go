@@ -263,6 +263,10 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 		return err
 	}
 
+	if filePath == "" {
+		filePath = "report.sarif"
+	}
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err

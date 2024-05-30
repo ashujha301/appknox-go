@@ -27,10 +27,6 @@ var sarifCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		outputFilePath, _ := cmd.Flags().GetString("output")
-		if outputFilePath == "" {
-			helper.PrintError(errors.New(`Error: Required flag "output" not set`))
-			return
-		}
 
 		helper.ConvertToSARIFReport(fileID,outputFilePath)
 	},
