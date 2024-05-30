@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/appknox/appknox-go/appknox"
@@ -177,6 +178,31 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 			level = "none"
 		}
 
+		compliantMessage := "No security risks identified."
+		nonCompliantMessage := "Security issues identified. Please review and mitigate."
+
+		if vulnerability.Compliant != "" {
+			compliantMessage = vulnerability.Compliant
+		}
+		if vulnerability.NonCompliant != "" {
+			nonCompliantMessage = vulnerability.NonCompliant
+		}
+
+		markdown := "## Summary of Findings\n\n"
+		markdown += "### Description:\n" + vulnerability.Description + "\n\n"
+		markdown += "### Recommendations\n\n"
+		markdown += "#### Compliant:\n" + compliantMessage + "\n\n"
+		markdown += "#### Non-Compliant:\n" + nonCompliantMessage
+
+		tags := []string{"security"}
+		if len(analysis.Cwe) > 0 {
+			for _, cwe := range analysis.Cwe {
+				transformedCWE := strings.Replace(cwe, "_", "-", 1)
+
+				tags = append(tags, transformedCWE)
+			}
+		}
+
 		rule := Rule{
 			ID:   ruleID,
 			Name: strcase.ToCamel(vulnerability.Name),
@@ -184,20 +210,14 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 				Text: vulnerability.Name,
 			},
 			FullDescription: Description{
-				Text: vulnerability.Description,
+				Text: vulnerability.Intro,
 			},
 			Help: Help{
-				Text:     "Recommendations",
-				Markdown: fmt.Sprintf("## Recommendations\n\n### Compliant:\n%s\n\n### Non-Compliant:\n%s", vulnerability.Compliant, vulnerability.NonCompliant),
+				Text:     "Summary of Findings",
+				Markdown: markdown,
 			},
 			Properties: RuleProperties{
-				Tags: []string{
-					"security",
-					"CWE-22",
-					"CVSS-BASESCORE-9.31",
-					"cvss-baseScore-7.32",
-					"5.60",
-				},
+				Tags:             tags,
 				Precision:        "high",
 				ProblemSeverity:  level,
 				SecuritySeverity: fmt.Sprintf("%.1f", analysis.CvssBase),
@@ -210,13 +230,13 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 			RuleID: ruleID,
 			Level:  level,
 			Message: Message{
-				Text: vulnerability.Description,
+				Text: vulnerability.Intro,
 			},
 			Locations: []Location{
 				{
 					PhysicalLocation: PhysicalLocation{
 						ArtifactLocation: ArtifactLocation{
-							URI: "file://path/to/source/file",
+							URI: "SRCROOT",
 						},
 					},
 				},
