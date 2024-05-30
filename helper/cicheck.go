@@ -62,6 +62,7 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 		PrintError(err)
 		os.Exit(1)
 	}
+
 	t := tabby.New()
 	t.AddHeader(
 		"ANALYSIS-ID",
@@ -71,12 +72,16 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 		"VULNERABILITY-ID",
 		"VULNERABILITY-NAME",
 	)
+	
+
 	vulnerableAnalyses := make([]appknox.Analysis, 0)
+
 	for _, analysis := range finalAnalyses {
 		if int(analysis.ComputedRisk) >= riskThreshold {
 			vulnerableAnalyses = append(vulnerableAnalyses, *analysis)
 		}
 	}
+
 	for _, analysis := range vulnerableAnalyses {
 		vulnerability, _, err := client.Vulnerabilities.GetByID(
 			ctx, analysis.VulnerabilityID,
@@ -94,6 +99,7 @@ func ProcessCiCheck(fileID, riskThreshold int) {
 			vulnerability.Name,
 		)
 	}
+
 	vulLen := len(vulnerableAnalyses)
 	msg := fmt.Sprintf("\nCheck file ID %d on appknox dashboard for more details.\n", fileID)
 	if vulLen > 0 {

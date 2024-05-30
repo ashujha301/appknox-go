@@ -17,6 +17,7 @@ Available Commands:
   files         List files for project
   help          Help about any command
   init          Used to initialize Appknox CLI
+  sarif         Create SARIF report
   organizations List organizations
   owasp         Fetch OWASP by ID
   projects      List projects
@@ -137,6 +138,7 @@ each time you run a command you have to pass the flag `access-token`.
 | `vulnerability <vulnerability_id>` | Get vulnerability detail |
 | `owasp <owasp_id>` | Get OWASP detail |
 | `upload <path_to_app_package>` | Upload app file from given path and get the file_id |
+| `sarif <file_id>` | Create SARIF report for the app file. |
 | `cicheck <file_id>` | Check for vulnerabilities based on risk threshold. |
 | `reports create <file_id>` | Create report for the app file |
 | `reports download summary-csv <report_id>` | Download Summary CSV report for the given report of the file |
@@ -190,7 +192,6 @@ ID      RISK    CVSS-VECTOR                                   CVSS-BASE  VULNERA
 671600  Low     CVSS:3.0/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N  3.3        96                Enabled Android Application Backup
 
 exit status 1
-
 ```
 
 #### For windows platform
@@ -240,7 +241,6 @@ ID      RISK    CVSS-VECTOR                                   CVSS-BASE  VULNERA
 671600  Low     CVSS:3.0/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N  3.3        96                Enabled Android Application Backup
 
 exit status 1
-
 ```
 
 ## CI/CD Workflows

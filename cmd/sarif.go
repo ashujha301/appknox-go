@@ -10,10 +10,10 @@ import (
 )
 
 // analysesCmd represents the analyses command
-var analysesCmd = &cobra.Command{
-	Use:   "analyses",
-	Short: "List analyses for file",
-	Long:  `List analyses for file`,
+var sarifCmd = &cobra.Command{
+	Use:   "sarif",
+	Short: "Create SARIF report",
+	Long:  `Create SARIF report`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return errors.New("file id is required")
@@ -26,11 +26,12 @@ var analysesCmd = &cobra.Command{
 			helper.PrintError("valid file id is required")
 			os.Exit(1)
 		}
-
-		helper.ProcessAnalyses(fileID)
+		outputFilePath, _ := cmd.Flags().GetString("output")
+		helper.ConvertToSARIFReport(fileID,outputFilePath)
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(analysesCmd)
+	RootCmd.AddCommand(sarifCmd)
+	sarifCmd.PersistentFlags().StringP("output", "o", "", "Output file path to save reports")
 }
