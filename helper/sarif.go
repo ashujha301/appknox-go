@@ -34,6 +34,7 @@ type ToolComponent struct {
 type Driver struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	InformationURI string `json:"informationUri"`
 	Rules   []Rule `json:"rules"`
 }
 
@@ -153,7 +154,8 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 
 	driver := Driver{
 		Name:    "Appknox",
-		Version: "1.4.6",
+		Version: "1.3.0",
+		InformationURI: "https://www.appknox.com/",
 		Rules:   []Rule{},
 	}
 
@@ -178,7 +180,7 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 			level = "none"
 		}
 
-		compliantMessage := "No security risks identified."
+		compliantMessage := "Security issues identified. Please review and mitigate."
 		nonCompliantMessage := "Security issues identified. Please review and mitigate."
 
 		if vulnerability.Compliant != "" {
@@ -190,9 +192,22 @@ func ConvertToSARIFReport(fileID int, filePath string) error {
 
 		markdown := "## Summary of Findings\n\n"
 		markdown += "### Description:\n" + vulnerability.Description + "\n\n"
+		if len(analysis.Findings) > 0 {
+			markdown += "#### Findings:\n"
+			for _, finding := range analysis.Findings {
+				markdown += finding.Description + "\n"
+			}
+			markdown += "\n"
+		}
 		markdown += "### Recommendations\n\n"
-		markdown += "#### Compliant:\n" + compliantMessage + "\n\n"
-		markdown += "#### Non-Compliant:\n" + nonCompliantMessage
+		markdown += "####  Compliant Solution:\n" + compliantMessage + "\n\n"
+		markdown += "####  Noncompliant Code Example:\n" + nonCompliantMessage + "\n\n"
+
+		businessImplecationMessage := ""
+		if vulnerability.BusinessImplecation != "" {
+			businessImplecationMessage = vulnerability.BusinessImplecation
+			markdown += "### Business Implication:\n" + businessImplecationMessage + "\n\n"
+		}
 
 		tags := []string{"security"}
 		if len(analysis.Cwe) > 0 {

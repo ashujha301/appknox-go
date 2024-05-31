@@ -108,8 +108,14 @@ type Analysis struct {
 	Nistsp80053     []string                `json:"nistsp80053,omitempty"`
 	Nistsp800171    []string                `json:"nistsp800171,omitempty"`
 	Owaspmobile2024 []string                `json:"owaspmobile2024,omitempty"`
+	Findings        []Finding               `json:"findings,omitempty"`
 	UpdatedOn       *time.Time              `json:"updated_on,omitempty"`
 	VulnerabilityID int                     `json:"vulnerability,omitempty"`
+}
+
+type Finding struct {
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // AnalysisListOptions specifies the optional parameters to the

@@ -27,7 +27,6 @@ var sarifCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		outputFilePath, _ := cmd.Flags().GetString("output")
-
 		helper.ConvertToSARIFReport(fileID,outputFilePath)
 	},
 }
